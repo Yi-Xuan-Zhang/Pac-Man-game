@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>PAC-MAN BAKERY</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <div class="game-bg">
+        <div class="ui">
+            <div>Score：<span id="score">0</span>/4</div>
+            <div>Time：<span id="time">60</span>s</div>
+        </div>
+
+        <div class="bread-path"></div>
+
+        <div class="Pac-Man" id="pacman">
+            <div class="top"></div>
+            <div class="bottom"></div>
+            <div class="eye"></div>
+        </div>
+
+        <div class="ghost" id="ghost"></div>
+
+        <div class="food bagel"></div>
+        <div class="food baguette"></div>
+        <div class="food sourdough"></div>
+        <div class="food pretzel"></div>
+
+        <div class="overlay" id="message">
+            <h1>🍞PAC-MAN BAKERY🥯</h1>
+            <p>吃掉所有麵包並躲避鬼魂！</p>
+            <button onclick="restartGame()">開始遊戲</button>
+        </div>
+    </div>
+
+    <div class="touch">
+        <div></div>
+        <button data-dir="up">⬆️</button>
+        <div></div>
+        <button data-dir="left">⬅️</button>
+        <button data-dir="down">⬇️</button>
+        <button data-dir="right">➡️</button>
+    </div>
+    <script src="script.js"></script>
+</body>
+
+</html>
