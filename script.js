@@ -1,3 +1,4 @@
+const board = document.getElementById('board');
 const pac = document.getElementById('pacman');
 const ghost = document.getElementById('ghost');
 const foods = document.querySelectorAll('.food');
@@ -5,34 +6,45 @@ const scoreEl = document.getElementById('score');
 const timeEl = document.getElementById('time');
 const msg = document.getElementById('message');
 
-let x = 20, y = 100, gx = 700, gy = 350;
+// All positions/sizes are stored as percentages of the board (0-100),
+// matching the % values used in style.css. This keeps movement and
+// collisions correct no matter how large or small the board renders.
+const PAC_W = 10, PAC_H = 16;
+const GHOST_W = 7.5, GHOST_H = 12;
+
+const MOVE_DX = 2.5, MOVE_DY = 4;   // player step per key/tap press
+const GHOST_DX = 1.25, GHOST_DY = 2; // ghost step per tick
+
+let x = 2.5, y = 20;
+let gx = 87.5, gy = 70;
 let score = 0, time = 60;
 let game = false;
 let timer, ghostTimer;
+let audioCtx;
 
 function beep(f, d) {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const o = ctx.createOscillator();
-    const g = ctx.createGain();
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
     o.frequency.value = f;
     o.connect(g);
-    g.connect(ctx.destination);
+    g.connect(audioCtx.destination);
     o.start();
-    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + d);
-    o.stop(ctx.currentTime + d);
+    g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + d);
+    o.stop(audioCtx.currentTime + d);
 }
 
 function render() {
-    pac.style.left = x + 'px';
-    pac.style.top = y + 'px';
-    ghost.style.left = gx + 'px';
-    ghost.style.top = gy + 'px';
+    pac.style.left = x + '%';
+    pac.style.top = y + '%';
+    ghost.style.left = gx + '%';
+    ghost.style.top = gy + '%';
 }
 
 function move(dx, dy, deg) {
     if (!game) return;
-    x = Math.max(0, Math.min(x + dx, 720));
-    y = Math.max(0, Math.min(y + dy, 420));
+    x = Math.max(0, Math.min(x + dx, 100 - PAC_W));
+    y = Math.max(0, Math.min(y + dy, 100 - PAC_H));
     pac.style.transform = `rotate(${deg}deg)`;
     render();
     checkFood();
@@ -40,27 +52,39 @@ function move(dx, dy, deg) {
 
 document.addEventListener('keydown', e => {
     const k = e.key.toLowerCase();
-    if (k === 'arrowup' || k === 'w') move(0, -20, 270);
-    if (k === 'arrowdown' || k === 's') move(0, 20, 90);
-    if (k === 'arrowleft' || k === 'a') move(-20, 0, 180);
-    if (k === 'arrowright' || k === 'd') move(20, 0, 0);
+    const isMoveKey = ['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd'].includes(k);
+    if (isMoveKey) e.preventDefault(); // stop page from scrolling with arrow keys
+    if (k === 'arrowup' || k === 'w') move(0, -MOVE_DY, 270);
+    if (k === 'arrowdown' || k === 's') move(0, MOVE_DY, 90);
+    if (k === 'arrowleft' || k === 'a') move(-MOVE_DX, 0, 180);
+    if (k === 'arrowright' || k === 'd') move(MOVE_DX, 0, 0);
 });
 
 document.querySelectorAll('.touch button').forEach(btn => {
-    btn.addEventListener('click', () => {
+    const handler = (e) => {
+        e.preventDefault();
         const d = btn.dataset.dir;
-        if (d === 'up') move(0, -20, 270);
-        if (d === 'down') move(0, 20, 90);
-        if (d === 'left') move(-20, 0, 180);
-        if (d === 'right') move(20, 0, 0);
-    });
+        if (d === 'up') move(0, -MOVE_DY, 270);
+        if (d === 'down') move(0, MOVE_DY, 90);
+        if (d === 'left') move(-MOVE_DX, 0, 180);
+        if (d === 'right') move(MOVE_DX, 0, 0);
+    };
+    btn.addEventListener('click', handler);
+    btn.addEventListener('touchstart', handler, { passive: false });
 });
 
-document.querySelector('.game-bg').addEventListener('click', e => {
+function pointToBoardPercent(clientX, clientY) {
+    const rect = board.getBoundingClientRect();
+    const px = ((clientX - rect.left) / rect.width) * 100;
+    const py = ((clientY - rect.top) / rect.height) * 100;
+    return { px, py };
+}
+
+board.addEventListener('click', e => {
     if (!game) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    x = e.clientX - rect.left - 40;
-    y = e.clientY - rect.top - 40;
+    const { px, py } = pointToBoardPercent(e.clientX, e.clientY);
+    x = Math.max(0, Math.min(px - PAC_W / 2, 100 - PAC_W));
+    y = Math.max(0, Math.min(py - PAC_H / 2, 100 - PAC_H));
     render();
     checkFood();
 });
@@ -92,10 +116,10 @@ function checkFood() {
 
 function moveGhost() {
     if (!game) return;
-    if (gx < x) gx += 10;
-    if (gx > x) gx -= 10;
-    if (gy < y) gy += 10;
-    if (gy > y) gy -= 10;
+    if (gx < x) gx = Math.min(gx + GHOST_DX, 100 - GHOST_W);
+    if (gx > x) gx = Math.max(gx - GHOST_DX, 0);
+    if (gy < y) gy = Math.min(gy + GHOST_DY, 100 - GHOST_H);
+    if (gy > y) gy = Math.max(gy - GHOST_DY, 0);
     render();
 
     if (collide(
@@ -127,7 +151,7 @@ function lose(text) {
 function restartGame() {
     score = 0;
     time = 60;
-    x = 20; y = 100; gx = 700; gy = 350;
+    x = 2.5; y = 20; gx = 87.5; gy = 70;
     scoreEl.textContent = 0;
     timeEl.textContent = 60;
 
